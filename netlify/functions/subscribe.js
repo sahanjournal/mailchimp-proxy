@@ -1,183 +1,70 @@
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+import crypto from "crypto";
+import fetch from "node-fetch";
 
-const allowedOrigins = [
-  "https://www.thecity.nyc",
-  "https://thecity.nyc",
-  "https://qa-projects.thecity.nyc",
-  "https://projects.thecity.nyc",
-];
-
-exports.handler = async function (event, context) {
-  const origin = event.headers.origin;
-
-  const headers = {
-    "Access-Control-Allow-Origin": allowedOrigins.includes(origin)
-      ? origin
-      : "null",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-
-  // Handle preflight OPTIONS request
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers,
-      body: "",
-    };
-  }
-
-  // Handle POST request for subscribing the user
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: "Method not allowed" }),
-    };
-  }
-
-  const { email, quizResults } = JSON.parse(event.body);
-
-  if (!email) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: "Missing email" }),
-    };
-  }
-
-  const API_URL = process.env.ACTIVE_CAMPAIGN_URL;
-  const API_KEY = process.env.ACTIVE_CAMPAIGN_API_KEY;
-  const LIST_ID = process.env.ACTIVE_CAMPAIGN_LIST_ID;
-  const QUIZ_RESULTS_LIST_ID = process.env.ACTIVE_CAMPAIGN_QUIZ_RESULTS_LIST_ID;
-  const TAG_ID = process.env.ACTIVE_CAMPAIGN_TAG_ID;
-
+export async function handler(event) {
   try {
-    // Create or update the contact in ActiveCampaign
-    const syncResponse = await fetch(`${API_URL}/api/3/contact/sync`, {
-      method: "POST",
-      headers: {
-        "Api-Token": API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contact: {
-          email,
-          status: 1,
-        },
-      }),
-    });
+    const { email, city } = JSON.parse(event.body);
 
-    const syncData = await syncResponse.json();
-
-    if (!syncData.contact || !syncData.contact.id) {
+    if (!email || !city) {
       return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({
-          error: "Failed to sync contact",
-          details: syncData,
-        }),
+        statusCode: 400,
+        body: JSON.stringify({ error: "Email and city are required" }),
       };
     }
 
-    const contactId = syncData.contact.id;
+    const dc = "us20";
+    const apiKey = process.env.MAILCHIMP_API_KEY;
+    const listId = process.env.MAILCHIMP_AUDIENCE_ID; // Sahan Journal main newsletter audience ID
 
-    let listData, tagData, fieldResultsData, fieldDateData;
+    // Build subscriber hash
+    const subscriberHash = crypto
+      .createHash("md5")
+      .update(email.toLowerCase())
+      .digest("hex");
 
-    // Subscribe the contact to an ActiveCampaign list
-    const listResponse = await fetch(`${API_URL}/api/3/contactLists`, {
-      method: "POST",
-      headers: {
-        "Api-Token": API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contactList: {
-          contact: contactId,
-          list: !!quizResults ? QUIZ_RESULTS_LIST_ID : LIST_ID,
-          status: 1,
-        },
-      }),
-    });
+    // Tag based on city
+    const tag =
+      city === "st-paul"
+        ? "Meet Your Mayor St. Paul"
+        : "Meet Your Mayor Minneapolis";
 
-    listData = await listResponse.json();
+    // Prepare subscriber data
+    const payload = {
+      email_address: email,
+      status_if_new: "subscribed", // creates if not exists, updates if exists
+      tags: [tag],
+    };
 
-    // Tag the contact in ActiveCampaign
-    const tagResponse = await fetch(`${API_URL}/api/3/contactTags`, {
-      method: "POST",
-      headers: {
-        "Api-Token": API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contactTag: {
-          contact: contactId,
-          tag: TAG_ID,
-        },
-      }),
-    });
-
-    tagData = await tagResponse.json();
-
-    // If quizResults is provided, save it as a field value with the email contact, and
-    // also save the timestamp of when the quiz results were requested.
-    // Do not subscribe the user to a list or tag them if quizResults is provided.
-    if (!!quizResults) {
-      // 1. Save quiz results
-      const quizRes = await fetch(`${API_URL}/api/3/fieldValues`, {
-        method: "POST",
+    // Add or update subscriber
+    const response = await fetch(
+      `https://${dc}.api.mailchimp.com/3.0/lists/${listId}/members/${subscriberHash}`,
+      {
+        method: "PUT",
         headers: {
-          "Api-Token": API_KEY,
           "Content-Type": "application/json",
+          Authorization: `apikey ${apiKey}`,
         },
-        body: JSON.stringify({
-          fieldValue: {
-            contact: contactId,
-            field: "90", // quizResults field ID
-            value: quizResults,
-          },
-        }),
-      });
+        body: JSON.stringify(payload),
+      }
+    );
 
-      fieldResultsData = await quizRes.json();
+    const data = await response.json();
 
-      // 2. Save request submission timestamp
-      const dateRes = await fetch(`${API_URL}/api/3/fieldValues`, {
-        method: "POST",
-        headers: {
-          "Api-Token": API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fieldValue: {
-            contact: contactId,
-            field: "91", // "date quiz results requested" field ID
-            value: new Date().toISOString(),
-          },
-        }),
-      });
-
-      fieldDateData = await dateRes.json();
+    if (response.status >= 400) {
+      return {
+        statusCode: response.status,
+        body: JSON.stringify({ error: data }),
+      };
     }
 
     return {
       statusCode: 200,
-      headers,
       body: JSON.stringify({
-        contact: syncData.contact,
-        list: listData?.contactList,
-        tag: tagData?.contactTag,
-        quizResultsField: fieldResultsData?.fieldValue,
-        quizSubmittedAtField: fieldDateData?.fieldValue,
+        message: "Email subscribed and updated successfully on Mailchimp!",
+        data,
       }),
     };
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: "Request failed", details: err.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
-};
+}
