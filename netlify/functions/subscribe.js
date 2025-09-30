@@ -1,9 +1,20 @@
 import crypto from "crypto";
 
+const allowedOrigins = [
+  "https://www.sahanjournal.com",
+  "https://sahanjournal.com",
+  "https://staging-projects.sahanjournal.com",
+  "https://projects.sahanjournal.com",
+];
+
 export async function handler(event) {
   try {
+    const origin = event.headers.origin;
+
     const headers = {
-      "Access-Control-Allow-Origin": "*", // Consider restricting to specific domains in production
+      "Access-Control-Allow-Origin": allowedOrigins.includes(origin)
+        ? origin
+        : "null",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Allow-Methods": "POST, OPTIONS",
     };
@@ -17,7 +28,7 @@ export async function handler(event) {
       };
     }
 
-    const { email, city } = JSON.parse(event.body);
+    const { email, city, quizResults } = JSON.parse(event.body);
 
     if (!email || !city) {
       return {
@@ -42,11 +53,19 @@ export async function handler(event) {
         ? "Meet Your Mayor St. Paul"
         : "Meet Your Mayor Minneapolis";
 
+    // Build merge fields for quiz results
+    const merge_fields = {};
+    if (!!quizResults) {
+      merge_fields.QUIZRESULT = quizResults;
+      merge_fields.QUIZDATE = new Date().toISOString();
+    }
+
     // Prepare subscriber data
     const payload = {
       email_address: email,
       status_if_new: "subscribed", // creates if not exists, updates if exists
       tags: [tag],
+      merge_fields,
     };
 
     // Add or update subscriber

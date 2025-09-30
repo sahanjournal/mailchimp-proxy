@@ -1,8 +1,9 @@
-# Mailchimp API Proxy with Netlify
+# Meet Your Mayor Mailchimp API Proxy with Netlify
 
-This project sets up a secure serverless API proxy using Netlify to add users to a newsletter list on Mailchimp without exposing the API key on the frontend. 
+This project sets up a secure serverless API proxy using Netlify to add users from the
+Meet Your Mayor Quiz to a newsletter list on Mailchimp without exposing the API key on the frontend.
 
-***This code is based on THE CITY's [Active Campaign API Proxy](https://github.com/thecityny/active-campaign-proxy)***
+**_This code is based on THE CITY's [Active Campaign API Proxy](https://github.com/thecityny/active-campaign-proxy)_**
 
 ## Setup
 
@@ -10,7 +11,7 @@ This project sets up a secure serverless API proxy using Netlify to add users to
 2. In your Netlify dashboard, go to your project settings and add the following environment variables:
 
 - `MAILCHIMP_API_KEY` – Your Mailchimp API key
-- `MAILCHIMP_AUDIENCE_ID` – The ID for the specific newsletter list to subscribe an email address. 
+- `MAILCHIMP_AUDIENCE_ID` – The ID for the specific newsletter list to subscribe an email address.
 
 You can get these credentials from your Mailchimp admin account page.
 
@@ -24,7 +25,8 @@ Send a POST request to `.netlify/functions/subscribe` with a JSON body like:
 ```json
 {
   "email": "user@example.com",
-  "city": "st-paul"
+  "city": "st-paul",
+  "quizResults": "1. Linda Mayor /n 2. Derek Mayor" // OPTIONAL
 }
 ```
 
@@ -32,4 +34,4 @@ This will add the user to your Mailchimp list and assign them a tag of "Meet You
 
 ## Example Usage
 
-See the [NewsletterSignup component](https://github.com/thecityny/2025-meet-your-mayor/blob/main/src/components/NewsletterSignup.tsx) inside the [Meet Your Mayor 2025 codebase](https://github.com/thecityny/2025-meet-your-mayor/tree/main) for an example of how we use this API proxy in production. 
+See the [NewsletterSignup component](https://github.com/thecityny/2025-meet-your-mayor/blob/main/src/components/NewsletterSignup.tsx) inside the [Meet Your Mayor 2025 codebase](https://github.com/thecityny/2025-meet-your-mayor/tree/main) for an example of how we use this API proxy in production.
