@@ -2,6 +2,21 @@ import crypto from "crypto";
 
 export async function handler(event) {
   try {
+    const headers = {
+      "Access-Control-Allow-Origin": "*", // Consider restricting to specific domains in production
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    };
+
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === "OPTIONS") {
+      return {
+        statusCode: 200,
+        headers,
+        body: "",
+      };
+    }
+
     const { email, city } = JSON.parse(event.body);
 
     if (!email || !city) {
