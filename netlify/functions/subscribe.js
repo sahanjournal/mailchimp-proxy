@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import fetch from "node-fetch";
 
 export async function handler(event) {
   try {
