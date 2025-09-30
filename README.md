@@ -10,9 +10,7 @@ This project sets up a secure serverless API proxy using Netlify to add users to
 2. In your Netlify dashboard, go to your project settings and add the following environment variables:
 
 - `MAILCHIMP_API_KEY` – Your Mailchimp API key
-- `MAILCHIMP_URL` – Your Mailchimp API base URL (e.g., `https://youraccount.api-us1.com`)
-- `MAILCHIMP_LIST_ID` – The list ID to subscribe users to
-- `MAILCHIMP_TAG_ID` – The tag ID to assign to the user after subscribing
+- `MAILCHIMP_AUDIENCE_ID` – The ID for the specific newsletter list to subscribe an email address. 
 
 You can get these credentials from your Mailchimp admin account page.
 
@@ -25,11 +23,12 @@ Send a POST request to `.netlify/functions/subscribe` with a JSON body like:
 
 ```json
 {
-  "email": "user@example.com"
+  "email": "user@example.com",
+  "city": "st-paul"
 }
 ```
 
-This will add the user to your ActiveCampaign list and assign them a tag securely.
+This will add the user to your Mailchimp list and assign them a tag of "Meet Your Mayor St. Paul".
 
 ## Example Usage
 
