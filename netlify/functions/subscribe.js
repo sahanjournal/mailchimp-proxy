@@ -57,7 +57,7 @@ export async function handler(event) {
     const merge_fields = {};
     if (!!quizResults) {
       merge_fields.QUIZRESULT = quizResults;
-      merge_fields.SENDRESULT = "send"; // This tells Mailchimp to send a results email
+      merge_fields.SENDRESULT = city; // This tells Mailchimp to send a results email for the selected city
     }
 
     // Prepare subscriber data
