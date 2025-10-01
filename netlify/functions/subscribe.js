@@ -57,7 +57,7 @@ export async function handler(event) {
     const merge_fields = {};
     if (!!quizResults) {
       merge_fields.QUIZRESULT = quizResults;
-      merge_fields.QUIZDATE = new Date().toISOString();
+      merge_fields.SENDRESULT = "send"; // This tells Mailchimp to send a results email
     }
 
     // Prepare subscriber data
