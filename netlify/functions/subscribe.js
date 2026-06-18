@@ -51,7 +51,11 @@ export async function handler(event) {
     const tag =
       city === "st-paul"
         ? "Meet Your Mayor St. Paul"
-        : "Meet Your Mayor Minneapolis";
+        : city === "minneapolis"
+          ? "Meet Your Mayor Minneapolis"
+          : city === "hennepin"
+            ? "Meet Your Attorney Hennepin County"
+            : "Meet Your Mayor General"; // Fallback tag if city doesn't match expected values
 
     // Build merge fields for quiz results
     const merge_fields = {};
@@ -78,7 +82,7 @@ export async function handler(event) {
           Authorization: `apikey ${apiKey}`,
         },
         body: JSON.stringify(payload),
-      }
+      },
     );
 
     const data = await response.json();
